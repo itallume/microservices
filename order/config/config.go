@@ -7,15 +7,15 @@ import (
 )
 
 func GetEnv() string {
-	return getEnvironmentValue("ENV")
+	return GetEnvironmentValue("ENV")
 }
 
 func GetDataSourceURL() string {
-	return getEnvironmentValue("DATA_SOURCE_URL")
+	return GetEnvironmentValue("DATA_SOURCE_URL")
 }
 
 func GetApplicationPort() int {
-	portStr := getEnvironmentValue("APPLICATION_PORT")
+	portStr := GetEnvironmentValue("APPLICATION_PORT")
 	port, err := strconv.Atoi(portStr)
 
 	if err != nil {
@@ -25,7 +25,11 @@ func GetApplicationPort() int {
 	return port
 }
 
-func getEnvironmentValue(key string) string {
+func GetPaymentServiceUrl() string{
+	return GetEnvironmentValue("PAYMENT_SERVICE_URL")
+}
+
+func GetEnvironmentValue(key string) string {
 	if os.Getenv(key) == "" {
 		log.Fatalf("%s environment variable is missing", key)
 	}
