@@ -38,18 +38,13 @@ func (a Adapter) Create(ctx context.Context, request *shipping.CreateShippingReq
 	}
 
 	newShipping := domain.NewShipping(request.BillId, items)
-	result, err := a.api.CalculateRoute(newShipping)
+	deliveryTime, err := a.api.CalculateRoute(newShipping, request.BillId)
 
 	code := status.Code(err)
 	if code == codes.InvalidArgument {
 		return nil, err
 	} else if err != nil{
 		return nil, status.New(codes.Internal, fmt.Sprintf("Failed to calculate route. %v ", err)).Err()
-	}
-
-	deliveryTime, err := result.CalculateDeliveryTime()
-	if err != nil {
-		return nil, status.New(codes.Internal, fmt.Sprintf("Failed to calculate delivery time. %v", err)).Err()
 	}
 
 	return &shipping.CreateShippingResponse{DeliveryTime: deliveryTime}, nil
@@ -67,6 +62,6 @@ func (a Adapter) Run(){
 		reflection.Register(grpcServer)
 	}
 	if err := grpcServer.Serve(listen); err != nil{
-		log.Fatalf ("failed to serve grpc on port")
+		log.Fatalf ("failed to serve grpc on port %d, error: %v", a.port, err)
 	}
 }

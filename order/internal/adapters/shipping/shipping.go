@@ -1,4 +1,4 @@
-package payment_adapter
+package shipping_adapter
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/retry"
-	"github.com/itallume/microservices-proto/golang/payment"
+	"github.com/itallume/microservices-proto/golang/shipping"
 	"github.com/itallume/microservices/order/internal/application/core/domain"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -15,10 +15,10 @@ import (
 )
 
 type Adapter struct {
-	payment payment.PaymentClient
+	shipping shipping.ShippingClient
 }
 
-func NewAdapter(paymentServiceUrl string) (*Adapter, error) {
+func NewAdapter(shippingServiceUrl string) (*Adapter, error) {
 	var opts []grpc.DialOption
 	opts = append(opts,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -27,23 +27,31 @@ func NewAdapter(paymentServiceUrl string) (*Adapter, error) {
 			retry.WithMax(5),
 			retry.WithBackoff(retry.BackoffLinear(time.Second)),
 		)))
-	conn, err := grpc.Dial(paymentServiceUrl, opts...)
-
+	conn, err := grpc.Dial(shippingServiceUrl, opts...)
 	if err != nil {
 		return nil, err
 	}
 
-	client := payment.NewPaymentClient(conn)
-	return &Adapter{payment: client}, nil
+	client := shipping.NewShippingClient(conn)
+	return &Adapter{shipping: client}, nil
 }
 
-func (a *Adapter) Charge(order *domain.Order) (int64, error) {
+func (a *Adapter) CalculateRoute(order *domain.Order, billId int64) (int32, error) {
 	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
-	response, err := a.payment.Create(ctx,
-		&payment.CreatePaymentRequest{
-			UserId:     order.CustomerID,
-			OrderId:    order.ID,
-			TotalPrice: order.TotalPrice(),
+
+	var items []*shipping.Item
+	for _, orderItem := range order.OrderItems {
+		items = append(items, &shipping.Item{
+			ProductCode: orderItem.ProductCode,
+			UnitPrice:   orderItem.UnitPrice,
+			Quantity:    orderItem.Quantity,
+		})
+	}
+
+	response, err := a.shipping.Create(ctx,
+		&shipping.CreateShippingRequest{
+			BillId:     billId,
+			OrderItems: items,
 		})
 
 	code := status.Code(err)
@@ -51,5 +59,5 @@ func (a *Adapter) Charge(order *domain.Order) (int64, error) {
 		log.Printf("2-second deadline exceeded")
 		return 0, status.New(codes.DeadlineExceeded, "2-second deadline exceeded").Err()
 	}
-	return response.BillId, err
+	return response.DeliveryTime, err
 }

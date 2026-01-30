@@ -2,6 +2,6 @@ package ports
 
 import "github.com/itallume/microservices/order/internal/application/core/domain"
 
-type PaymentPort interface {
-	Charge(order *domain.Order) (int64, error)
+type ShippingPort interface{
+	CalculateRoute(shipping *domain.Order, billId int64) (int32, error)
 }

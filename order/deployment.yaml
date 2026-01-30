@@ -1,50 +1,54 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: payment
+  name: order
   labels:
-    service: payment
+    service: order
 spec:
   clusterIP: None
   selector:
-    service: payment
+    service: order
   ports:
     - name: grpc
-      port: 8081
+      port: 8080
       protocol: TCP
-      targetPort: 8081
+      targetPort: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: payment
+  name: order
   labels:
-    service: payment
+    service: order
 spec:
   replicas: 1
   selector:
     matchLabels:
-      service: payment
+      service: order
   template:
     metadata:
       labels:
-        service: payment
+        service: order
     spec:
       initContainers:
       - name: mysql-check
         image: busybox:1.28
         command: ['sh', '-c', 'until nslookup mysql; do echo waiting for mysql; sleep 10; done;']
       containers:
-      - name: payment
-        image: payment
+      - name: order
+        image: order
         imagePullPolicy: Never
         env:
           - name: APPLICATION_PORT
-            value : "8081"
+            value : "8080"
           - name: ENV
-            value: "prod"
+            value: "development"
           - name: DATA_SOURCE_URL
-            value : "root:s3cr3t@tcp(mysql:3306)/payments?charset=utf8mb4&parseTime=True&loc=Local"
+            value : "root:s3cr3t@tcp(mysql:3306)/orders?charset=utf8mb4&parseTime=True&loc=Local"
+          - name: PAYMENT_SERVICE_URL
+            value: "payment:8081"
+          - name: SHIPPING_SERVICE_URL
+            value: "shipping:8082"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -54,18 +58,18 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: GRPC
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: selfsigned-issuer
-  name: payment
+  name: order
 spec:
   rules:
     - http:
         paths:
-          - path: /Payment
+          - path: /Order
             pathType: Prefix
             backend:
               service:
-                name: payment
+                name: order
                 port:
-                  number: 8081
+                  number: 8080
   tls:
     - hosts:
         - ingress.local

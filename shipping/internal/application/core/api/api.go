@@ -1,7 +1,6 @@
 package api
 
 import (
-
 	"github.com/itallume/microservices/shipping/internal/application/core/domain"
 	"github.com/itallume/microservices/shipping/internal/ports"
 	"google.golang.org/grpc/codes"
@@ -18,13 +17,18 @@ func NewApplication(db ports.DBPort) *Application {
 	}
 }
 
-func (a Application) CalculateRoute(shipping domain.Shipping) (domain.Shipping, error) {
+func (a Application) CalculateRoute(shipping domain.Shipping, billId int64) (int32, error) {
 	if shipping.ItemsQuantity() <= 0 {
-		return domain.Shipping{}, status.Errorf(codes.InvalidArgument, "Shipping must have at least one item.")
+		return 0, status.Errorf(codes.InvalidArgument, "Shipping must have at least one item.")
 	}
 	err := a.db.Save(&shipping)
 	if err != nil {
-		return domain.Shipping{}, err
+		return 0, err
 	}
-	return shipping, nil
+
+	delivery, err := shipping.CalculateDeliveryTime()
+	if err != nil {
+		return 0, err
+	}
+	return delivery, nil
 }

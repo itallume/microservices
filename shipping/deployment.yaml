@@ -1,50 +1,50 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: payment
+  name: shipping
   labels:
-    service: payment
+    service: shipping
 spec:
   clusterIP: None
   selector:
-    service: payment
+    service: shipping
   ports:
     - name: grpc
-      port: 8081
+      port: 8082
       protocol: TCP
-      targetPort: 8081
+      targetPort: 8082
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: payment
+  name: shipping
   labels:
-    service: payment
+    service: shipping
 spec:
   replicas: 1
   selector:
     matchLabels:
-      service: payment
+      service: shipping
   template:
     metadata:
       labels:
-        service: payment
+        service: shipping
     spec:
       initContainers:
       - name: mysql-check
         image: busybox:1.28
         command: ['sh', '-c', 'until nslookup mysql; do echo waiting for mysql; sleep 10; done;']
       containers:
-      - name: payment
-        image: payment
+      - name: shipping
+        image: shipping
         imagePullPolicy: Never
         env:
           - name: APPLICATION_PORT
-            value : "8081"
+            value : "8082"
           - name: ENV
             value: "prod"
           - name: DATA_SOURCE_URL
-            value : "root:s3cr3t@tcp(mysql:3306)/payments?charset=utf8mb4&parseTime=True&loc=Local"
+            value : "root:s3cr3t@tcp(mysql:3306)/shippings?charset=utf8mb4&parseTime=True&loc=Local"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -54,18 +54,18 @@ metadata:
     nginx.ingress.kubernetes.io/backend-protocol: GRPC
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     cert-manager.io/cluster-issuer: selfsigned-issuer
-  name: payment
+  name: shipping
 spec:
   rules:
     - http:
         paths:
-          - path: /Payment
+          - path: /Shipping
             pathType: Prefix
             backend:
               service:
-                name: payment
+                name: shipping
                 port:
-                  number: 8081
+                  number: 8082
   tls:
     - hosts:
         - ingress.local

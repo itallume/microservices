@@ -1,6 +1,8 @@
 package api
 
 import (
+	"log"
+
 	"github.com/itallume/microservices/order/internal/application/core/domain"
 	"github.com/itallume/microservices/order/internal/ports"
 	"google.golang.org/grpc/codes"
@@ -8,14 +10,16 @@ import (
 )
 
 type Application struct {
-	db      ports.DBPort
-	payment ports.PaymentPort
+	db       ports.DBPort
+	payment  ports.PaymentPort
+	shipping ports.ShippingPort
 }
 
-func NewApplication(db ports.DBPort, payment ports.PaymentPort) *Application {
+func NewApplication(db ports.DBPort, payment ports.PaymentPort, shipping ports.ShippingPort) *Application {
 	return &Application{
-		db:      db,
-		payment: payment,
+		db:       db,
+		payment:  payment,
+		shipping: shipping,
 	}
 }
 
@@ -32,9 +36,16 @@ func (a Application) PlaceOrder(order domain.Order) (domain.Order, error) {
 	if err != nil {
 		return domain.Order{}, err
 	}
-	paymentErr := a.payment.Charge(&order)
+	billId, paymentErr := a.payment.Charge(&order)
 	if paymentErr != nil {
 		return domain.Order{}, paymentErr
 	}
+
+	deliveryTime, shippingErr := a.shipping.CalculateRoute(&order, billId)
+	if shippingErr != nil {
+		return domain.Order{}, shippingErr
+	}
+	log.Printf("Order %d will be delivered in %d days", order.ID, deliveryTime)
+
 	return order, nil
 }

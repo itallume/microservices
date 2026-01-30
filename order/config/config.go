@@ -29,6 +29,10 @@ func GetPaymentServiceUrl() string{
 	return GetEnvironmentValue("PAYMENT_SERVICE_URL")
 }
 
+func GetShippingServiceUrl() string{
+	return GetEnvironmentValue("SHIPPING_SERVICE_URL")
+}
+
 func GetEnvironmentValue(key string) string {
 	if os.Getenv(key) == "" {
 		log.Fatalf("%s environment variable is missing", key)
